@@ -1,3 +1,16 @@
+type coordinatePair = [number, number];
+
+function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(fn: T, delay: number) {
+	let wait = false;
+	return (...args: Parameters<T>) => {
+		if (!wait) {
+			wait = true;
+			fn(...args);
+			setTimeout(() => (wait = false), delay);
+		}
+	};
+}
+
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 let animationFrame: number;
@@ -16,26 +29,17 @@ function createBall(cx: number, cy: number, vx: number, vy: number, radius: numb
 
 	const getRadius = () => _radius;
 
-	const getCoordinate = () => [_cx, _cy] as const;
+	const getCoordinate = (): coordinatePair => [_cx, _cy];
 
 	const setCoordinate = () => {
 		_cx += _vx;
 		_cy += _vy;
 	};
 
-	const getVelocity = () => [_vx, _vy] as const;
+	const getVelocity = (): coordinatePair => [_vx, _vy];
 
 	const setVelocity = (velX: number, velY: number) => {
 		[_vx, _vy] = [velX, velY];
-	};
-
-	const checkBoundaries = () => {
-		if (_cy + _vy > canvas.height - _radius || _cy + _vy < _radius) {
-			vy = -vy;
-		}
-		if (_cx + _vx > canvas.width - _radius || _cx + _vx < _radius) {
-			vx = -vx;
-		}
 	};
 
 	const draw = () => {
@@ -56,15 +60,7 @@ function createBall(cx: number, cy: number, vx: number, vy: number, radius: numb
 	};
 }
 
-function play() {
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	ball.draw();
-	ball.setCoordinate();
-
-	const [cx, cy] = ball.getCoordinate();
-	const [vx, vy] = ball.getVelocity();
-	const radius = ball.getRadius();
-
+function checkBoundary([cx, cy]: coordinatePair, [vx, vy]: coordinatePair, radius: number) {
 	if (cy + vy > canvas.height - radius || cy + vy < radius) {
 		ball.setVelocity(vx, -vy);
 	}
@@ -72,6 +68,13 @@ function play() {
 	if (cx + vx > canvas.width - radius || cx + vx < radius) {
 		ball.setVelocity(-vx, vy);
 	}
+}
+
+function play() {
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ball.draw();
+	ball.setCoordinate();
+	checkBoundary(ball.getCoordinate(), ball.getVelocity(), ball.getRadius());
 
 	animationFrame = requestAnimationFrame(play);
 }
@@ -83,5 +86,7 @@ canvas.addEventListener('mouseover', (e) => {
 canvas.addEventListener('mouseout', (e) => {
 	cancelAnimationFrame(animationFrame);
 });
+
+addEventListener('resize', () => throttle(setSize, 200));
 
 ball.draw();
