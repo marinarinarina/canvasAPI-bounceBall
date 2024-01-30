@@ -1,3 +1,5 @@
+// import { coordinatePair, ballProps } from './types.d';
+// import { throttle } from './utils';
 function throttle(fn, delay) {
     var wait = false;
     return function () {
@@ -15,30 +17,43 @@ function throttle(fn, delay) {
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
 var animationFrame;
-var ball = createBall(100, 100, 5, 2, 25, 'blue');
+var ball = createBall({
+    centerX: 100,
+    centerY: 100,
+    velocityX: 5,
+    velocityY: 2,
+    bounciness: 0.99,
+    accelerationVertical: 0.25,
+    radius: 25,
+    color: 'blue',
+});
 setSize();
 function setSize() {
     canvas.height = innerHeight;
     canvas.width = innerWidth;
 }
-function createBall(cx, cy, vx, vy, radius, color) {
-    var _a = [cx, cy, vx, vy, radius, color], _cx = _a[0], _cy = _a[1], _vx = _a[2], _vy = _a[3], _radius = _a[4], _color = _a[5];
-    var getRadius = function () { return _radius; };
-    var getCoordinate = function () { return [_cx, _cy]; };
+function createBall(props) {
+    var centerX = props.centerX, centerY = props.centerY, velocityX = props.velocityX, velocityY = props.velocityY, bounciness = props.bounciness, accelerationVertical = props.accelerationVertical, radius = props.radius, color = props.color;
+    var getRadius = function () { return radius; };
+    var getCoordinate = function () { return [centerX, centerY]; };
     var setCoordinate = function () {
-        _cx += _vx;
-        _cy += _vy;
+        centerX += velocityX;
+        centerY += velocityY;
     };
-    var getVelocity = function () { return [_vx, _vy]; };
+    var getVelocity = function () { return [velocityX, velocityY]; };
     var setVelocity = function (velX, velY) {
         var _a;
-        _a = [velX, velY], _vx = _a[0], _vy = _a[1];
+        _a = [velX, velY], velocityX = _a[0], velocityY = _a[1];
+    };
+    var bounce = function () {
+        velocityY *= bounciness;
+        velocityY += accelerationVertical;
     };
     var draw = function () {
         ctx.beginPath();
-        ctx.arc(_cx, _cy, _radius, 0, Math.PI * 2, true);
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
         ctx.closePath();
-        ctx.fillStyle = _color;
+        ctx.fillStyle = color;
         ctx.fill();
     };
     return {
@@ -47,10 +62,11 @@ function createBall(cx, cy, vx, vy, radius, color) {
         setCoordinate: setCoordinate,
         getVelocity: getVelocity,
         setVelocity: setVelocity,
+        bounce: bounce,
         draw: draw,
     };
 }
-function checkBoundary(_a, _b, radius) {
+function checkCollision(_a, _b, radius) {
     var cx = _a[0], cy = _a[1];
     var vx = _b[0], vy = _b[1];
     if (cy + vy > canvas.height - radius || cy + vy < radius) {
@@ -64,7 +80,8 @@ function play() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ball.draw();
     ball.setCoordinate();
-    checkBoundary(ball.getCoordinate(), ball.getVelocity(), ball.getRadius());
+    ball.bounce();
+    checkCollision(ball.getCoordinate(), ball.getVelocity(), ball.getRadius());
     animationFrame = requestAnimationFrame(play);
 }
 canvas.addEventListener('mouseover', function (e) {

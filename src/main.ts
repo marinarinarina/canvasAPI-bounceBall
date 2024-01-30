@@ -1,4 +1,5 @@
-type coordinatePair = [number, number];
+// import { coordinatePair, ballProps } from './types.d';
+// import { throttle } from './utils';
 
 function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(fn: T, delay: number) {
 	let wait = false;
@@ -11,11 +12,32 @@ function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(fn: T, de
 	};
 }
 
+type coordinatePair = [number, number];
+type ballProps = {
+	centerX: number;
+	centerY: number;
+	velocityX: number;
+	velocityY: number;
+	bounciness: number;
+	accelerationVertical: number;
+	radius: number;
+	color: string;
+};
+
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 let animationFrame: number;
 
-const ball = createBall(100, 100, 5, 2, 25, 'blue');
+const ball = createBall({
+	centerX: 100,
+	centerY: 100,
+	velocityX: 5,
+	velocityY: 2,
+	bounciness: 0.99,
+	accelerationVertical: 0.25,
+	radius: 25,
+	color: 'blue',
+});
 
 setSize();
 
@@ -24,29 +46,34 @@ function setSize() {
 	canvas.width = innerWidth;
 }
 
-function createBall(cx: number, cy: number, vx: number, vy: number, radius: number, color: string) {
-	let [_cx, _cy, _vx, _vy, _radius, _color] = [cx, cy, vx, vy, radius, color];
+function createBall(props: ballProps) {
+	let { centerX, centerY, velocityX, velocityY, bounciness, accelerationVertical, radius, color } = props;
 
-	const getRadius = () => _radius;
+	const getRadius = () => radius;
 
-	const getCoordinate = (): coordinatePair => [_cx, _cy];
+	const getCoordinate = (): coordinatePair => [centerX, centerY];
 
 	const setCoordinate = () => {
-		_cx += _vx;
-		_cy += _vy;
+		centerX += velocityX;
+		centerY += velocityY;
 	};
 
-	const getVelocity = (): coordinatePair => [_vx, _vy];
+	const getVelocity = (): coordinatePair => [velocityX, velocityY];
 
 	const setVelocity = (velX: number, velY: number) => {
-		[_vx, _vy] = [velX, velY];
+		[velocityX, velocityY] = [velX, velY];
+	};
+
+	const bounce = () => {
+		velocityY *= bounciness;
+		velocityY += accelerationVertical;
 	};
 
 	const draw = () => {
 		ctx.beginPath();
-		ctx.arc(_cx, _cy, _radius, 0, Math.PI * 2, true);
+		ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
 		ctx.closePath();
-		ctx.fillStyle = _color;
+		ctx.fillStyle = color;
 		ctx.fill();
 	};
 
@@ -56,11 +83,12 @@ function createBall(cx: number, cy: number, vx: number, vy: number, radius: numb
 		setCoordinate,
 		getVelocity,
 		setVelocity,
+		bounce,
 		draw,
 	};
 }
 
-function checkBoundary([cx, cy]: coordinatePair, [vx, vy]: coordinatePair, radius: number) {
+function checkCollision([cx, cy]: coordinatePair, [vx, vy]: coordinatePair, radius: number) {
 	if (cy + vy > canvas.height - radius || cy + vy < radius) {
 		ball.setVelocity(vx, -vy);
 	}
@@ -74,7 +102,9 @@ function play() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	ball.draw();
 	ball.setCoordinate();
-	checkBoundary(ball.getCoordinate(), ball.getVelocity(), ball.getRadius());
+	ball.bounce();
+
+	checkCollision(ball.getCoordinate(), ball.getVelocity(), ball.getRadius());
 
 	animationFrame = requestAnimationFrame(play);
 }
