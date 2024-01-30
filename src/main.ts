@@ -1,4 +1,3 @@
-type coordinatePair = [number, number];
 type ballProps = {
 	centerX: number;
 	centerY: number;
@@ -9,6 +8,32 @@ type ballProps = {
 	radius: number;
 	color: string;
 };
+
+const title = document.querySelector('.title') as HTMLElement;
+const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+const balls: ReturnType<typeof createBall>[] = [];
+
+setSize();
+requestAnimationFrame(play);
+
+canvas.addEventListener('click', (e) => {
+	title.style.visibility = 'hidden';
+	balls.push(
+		createBall({
+			centerX: e.clientX,
+			centerY: e.clientY,
+			velocityX: 5,
+			velocityY: 2,
+			bounciness: 0.99,
+			accelerationVertical: 0.25,
+			radius: getRandomNumber(1, 100),
+			color: getRandomColor(),
+		})
+	);
+});
+
+addEventListener('resize', () => throttle(setSize, 200));
 
 function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(fn: T, delay: number) {
 	let wait = false;
@@ -21,77 +46,47 @@ function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(fn: T, de
 	};
 }
 
-const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-let animationFrame: number;
-let isRunning = false;
-
-const ball = createBall({
-	centerX: 100,
-	centerY: 100,
-	velocityX: 5,
-	velocityY: 2,
-	bounciness: 0.99,
-	accelerationVertical: 0.25,
-	radius: 25,
-	color: 'blue',
-});
-
-setSize();
-
-canvas.addEventListener('mousemove', (e) => {
-	if (!isRunning) {
-		clearCanvas();
-		ball.setInitCoordinate(e.clientX, e.clientY);
-		ball.draw();
-	}
-});
-
-canvas.addEventListener('click', (e) => {
-	if (!isRunning) {
-		animationFrame = requestAnimationFrame(play);
-		isRunning = true;
-	}
-});
-
-canvas.addEventListener('mouseout', (e) => {
-	cancelAnimationFrame(animationFrame);
-	isRunning = false;
-});
-
-addEventListener('resize', () => throttle(setSize, 200));
-
 function setSize() {
 	canvas.height = innerHeight;
 	canvas.width = innerWidth;
 }
 
+function getRandomNumber(min: number, max: number) {
+	min = Math.ceil(min);
+	max = Math.floor(max);
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getRandomColor() {
+	let hexSet = '0123456789ABCDEF';
+	let finalHexString = '#';
+	for (let i = 0; i < 6; i++) {
+		finalHexString += hexSet[Math.ceil(Math.random() * 15)];
+	}
+	return finalHexString;
+}
+
 function createBall(props: ballProps) {
 	let { centerX, centerY, velocityX, velocityY, bounciness, accelerationVertical, radius, color } = props;
 
-	const getRadius = () => radius;
-
-	const getCoordinate = (): coordinatePair => [centerX, centerY];
-
-	const setInitCoordinate = (x: number, y: number) => {
-		centerX = x;
-		centerY = y;
-	};
-
-	const updateCoordinate = () => {
+	const setCoordinate = () => {
 		centerX += velocityX;
 		centerY += velocityY;
-	};
-
-	const getVelocity = (): coordinatePair => [velocityX, velocityY];
-
-	const setVelocity = (velX: number, velY: number) => {
-		[velocityX, velocityY] = [velX, velY];
 	};
 
 	const bounce = () => {
 		velocityY *= bounciness;
 		velocityY += accelerationVertical;
+	};
+
+	const checkCollision = () => {
+		if (centerY + velocityY > canvas.height - radius || centerY + velocityY < radius) {
+			velocityY = -velocityY;
+		}
+
+		if (centerX + velocityX > canvas.width - radius || centerX + velocityX < radius) {
+			velocityX = -velocityX;
+		}
 	};
 
 	const draw = () => {
@@ -103,25 +98,11 @@ function createBall(props: ballProps) {
 	};
 
 	return {
-		getRadius,
-		getCoordinate,
-		setInitCoordinate,
-		updateCoordinate,
-		getVelocity,
-		setVelocity,
+		setCoordinate,
 		bounce,
+		checkCollision,
 		draw,
 	};
-}
-
-function checkCollision([cx, cy]: coordinatePair, [vx, vy]: coordinatePair, radius: number) {
-	if (cy + vy > canvas.height - radius || cy + vy < radius) {
-		ball.setVelocity(vx, -vy);
-	}
-
-	if (cx + vx > canvas.width - radius || cx + vx < radius) {
-		ball.setVelocity(-vx, vy);
-	}
 }
 
 function clearCanvas() {
@@ -131,11 +112,13 @@ function clearCanvas() {
 
 function play() {
 	clearCanvas();
-	ball.draw();
-	ball.updateCoordinate();
-	ball.bounce();
 
-	checkCollision(ball.getCoordinate(), ball.getVelocity(), ball.getRadius());
+	balls.forEach((ball) => {
+		ball.draw();
+		ball.setCoordinate();
+		ball.bounce();
+		ball.checkCollision();
+	});
 
-	animationFrame = requestAnimationFrame(play);
+	requestAnimationFrame(play);
 }
