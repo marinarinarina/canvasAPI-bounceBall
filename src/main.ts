@@ -1,14 +1,3 @@
-function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(fn: T, delay: number) {
-	let wait = false;
-	return (...args: Parameters<T>) => {
-		if (!wait) {
-			wait = true;
-			fn(...args);
-			setTimeout(() => (wait = false), delay);
-		}
-	};
-}
-
 type coordinatePair = [number, number];
 type ballProps = {
 	centerX: number;
@@ -20,6 +9,17 @@ type ballProps = {
 	radius: number;
 	color: string;
 };
+
+function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(fn: T, delay: number) {
+	let wait = false;
+	return (...args: Parameters<T>) => {
+		if (!wait) {
+			wait = true;
+			fn(...args);
+			setTimeout(() => (wait = false), delay);
+		}
+	};
+}
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
@@ -96,7 +96,8 @@ function checkCollision([cx, cy]: coordinatePair, [vx, vy]: coordinatePair, radi
 }
 
 function play() {
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.fillStyle = 'rgb(255 255 255 / 30%)';
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
 	ball.draw();
 	ball.setCoordinate();
 	ball.bounce();
