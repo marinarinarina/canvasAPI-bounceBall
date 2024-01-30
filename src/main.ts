@@ -24,6 +24,7 @@ function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(fn: T, de
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 let animationFrame: number;
+let isRunning = false;
 
 const ball = createBall({
 	centerX: 100,
@@ -38,6 +39,28 @@ const ball = createBall({
 
 setSize();
 
+canvas.addEventListener('mousemove', (e) => {
+	if (!isRunning) {
+		clearCanvas();
+		ball.setInitCoordinate(e.clientX, e.clientY);
+		ball.draw();
+	}
+});
+
+canvas.addEventListener('click', (e) => {
+	if (!isRunning) {
+		animationFrame = requestAnimationFrame(play);
+		isRunning = true;
+	}
+});
+
+canvas.addEventListener('mouseout', (e) => {
+	cancelAnimationFrame(animationFrame);
+	isRunning = false;
+});
+
+addEventListener('resize', () => throttle(setSize, 200));
+
 function setSize() {
 	canvas.height = innerHeight;
 	canvas.width = innerWidth;
@@ -50,7 +73,12 @@ function createBall(props: ballProps) {
 
 	const getCoordinate = (): coordinatePair => [centerX, centerY];
 
-	const setCoordinate = () => {
+	const setInitCoordinate = (x: number, y: number) => {
+		centerX = x;
+		centerY = y;
+	};
+
+	const updateCoordinate = () => {
 		centerX += velocityX;
 		centerY += velocityY;
 	};
@@ -77,7 +105,8 @@ function createBall(props: ballProps) {
 	return {
 		getRadius,
 		getCoordinate,
-		setCoordinate,
+		setInitCoordinate,
+		updateCoordinate,
 		getVelocity,
 		setVelocity,
 		bounce,
@@ -95,26 +124,18 @@ function checkCollision([cx, cy]: coordinatePair, [vx, vy]: coordinatePair, radi
 	}
 }
 
-function play() {
+function clearCanvas() {
 	ctx.fillStyle = 'rgb(255 255 255 / 30%)';
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function play() {
+	clearCanvas();
 	ball.draw();
-	ball.setCoordinate();
+	ball.updateCoordinate();
 	ball.bounce();
 
 	checkCollision(ball.getCoordinate(), ball.getVelocity(), ball.getRadius());
 
 	animationFrame = requestAnimationFrame(play);
 }
-
-canvas.addEventListener('mouseover', (e) => {
-	animationFrame = requestAnimationFrame(play);
-});
-
-canvas.addEventListener('mouseout', (e) => {
-	cancelAnimationFrame(animationFrame);
-});
-
-addEventListener('resize', () => throttle(setSize, 200));
-
-ball.draw();
