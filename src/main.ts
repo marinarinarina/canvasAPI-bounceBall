@@ -1,6 +1,3 @@
-// import { coordinatePair, ballProps } from './types.d';
-// import { throttle } from './utils';
-
 function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(fn: T, delay: number) {
 	let wait = false;
 	return (...args: Parameters<T>) => {
